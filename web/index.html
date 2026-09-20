@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCS · Simulador de Câmara de Bolhas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%2306241a%22/><path d=%22M20 60 Q40 20 80 40%22 stroke=%22%2357e8b0%22 stroke-width=%226%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>">
+<link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body data-theme="dark">
+
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" fill="var(--chamber-bg)" stroke="var(--accent)" stroke-width="2"/>
+        <path d="M8 30 C 16 14, 30 14, 40 22" stroke="var(--neg)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M10 20 C 18 30, 28 34, 38 26" stroke="var(--pos)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="brand-text">
+        <h1>Câmara de Bolhas <span>· Simulador</span></h1>
+        <p>Cinemática relativística, campos magnéticos e produção de pares — a partir do artigo à RBEF e do simulador de M. Gagnon (2011)</p>
+      </div>
+    </div>
+    <nav class="topnav">
+      <button class="nav-btn" data-open-modal="modal-particles">Tabela de partículas</button>
+      <button class="nav-btn" data-open-modal="modal-charts">Gráficos</button>
+      <button class="nav-btn" data-open-modal="modal-about">Sobre a física</button>
+      <button class="nav-btn icon-btn" id="theme-toggle" title="Alternar tema claro/escuro" aria-label="Alternar tema">🌓</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+
+    <section class="chamber-pane">
+      <div class="activity-tabs" id="activity-tabs">
+        <button class="tab active" data-mode="single">1 · MCU e curvatura</button>
+        <button class="tab" data-mode="energyloss">2 · Perda de energia</button>
+        <button class="tab" data-mode="pair">3 · Produção de pares</button>
+        <button class="tab" data-mode="cascade">Cascata (livre)</button>
+      </div>
+
+      <div class="chamber-frame">
+        <canvas id="chamber-canvas"></canvas>
+        <div class="chamber-hud">
+          <div class="hud-chip" id="hud-B">B = 1.70 T</div>
+          <div class="hud-chip" id="hud-material">H₂ líquido</div>
+          <div class="hud-chip" id="hud-momentum">p = 24.0 GeV/c</div>
+        </div>
+        <div class="chamber-caption" id="chamber-caption">Ajuste os controles e dispare o feixe.</div>
+        <div class="measure-readout hidden" id="measure-readout">
+          <strong>Medida:</strong> <span id="measure-text">clique em 3 pontos sobre um traço</span>
+        </div>
+      </div>
+
+      <div class="transport">
+        <div class="switch-row" id="switch-row">
+          <label class="switch" data-switch="power"><input type="checkbox" checked><span class="track"></span><span class="label">Energia</span></label>
+          <label class="switch" data-switch="pressure"><input type="checkbox" checked><span class="track"></span><span class="label">Pressão</span></label>
+          <label class="switch" data-switch="temperature"><input type="checkbox" checked><span class="track"></span><span class="label">Superaquecimento</span></label>
+          <label class="switch" data-switch="field"><input type="checkbox" checked><span class="track"></span><span class="label">Campo B</span></label>
+        </div>
+        <button class="fire-btn" id="fire-btn">⚡ Disparar feixe</button>
+        <button class="ghost-btn" id="measure-btn">📐 Medir traço</button>
+        <button class="ghost-btn" id="clear-btn">🧹 Limpar</button>
+      </div>
+    </section>
+
+    <aside class="control-pane">
+
+      <div class="panel" id="panel-mode-controls">
+        <h2>Parâmetros</h2>
+        <div id="controls-single" class="mode-controls">
+          <label class="field">Partícula
+            <select id="single-particle"></select>
+          </label>
+          <label class="field"><span class="field-row">Momento inicial: <span class="value" id="single-momentum-value">1000 MeV/c</span></span>
+            <input type="range" id="single-momentum" min="10" max="30000" value="1000" step="10">
+          </label>
+          <label class="field"><span class="field-row">Ângulo de entrada: <span class="value" id="single-angle-value">0°</span></span>
+            <input type="range" id="single-angle" min="-45" max="45" value="0" step="1">
+          </label>
+        </div>
+
+        <div id="controls-energyloss" class="mode-controls hidden">
+          <label class="field">Partícula
+            <select id="eloss-particle"></select>
+          </label>
+          <label class="field"><span class="field-row">Momento inicial: <span class="value" id="eloss-momentum-value">12 MeV/c</span></span>
+            <input type="range" id="eloss-momentum" min="2" max="200" value="12" step="1">
+          </label>
+          <p class="hint">Em baixo momento a perda de energia por ionização é visível: o raio de curvatura encolhe a cada volta até o traço "colapsar" — exatamente a assinatura discutida na Seção II.C do artigo.</p>
+        </div>
+
+        <div id="controls-pair" class="mode-controls hidden">
+          <label class="field"><span class="field-row">Energia do fóton (E<sub>γ</sub>): <span class="value" id="pair-energy-value">50.0 MeV</span></span>
+            <input type="range" id="pair-energy" min="0.3" max="500" value="50" step="0.1">
+          </label>
+          <div class="threshold-readout" id="threshold-readout">
+            Limiar (Eq. 27): <strong id="threshold-value">1,0226 MeV</strong>
+          </div>
+          <p class="hint">Abaixo do limiar 2m<sub>e</sub>c²(1+m<sub>e</sub>/M<sub>N</sub>), o fóton atravessa a câmara sem deixar par — o processo é cinematicamente proibido (Seção II.B do artigo).</p>
+        </div>
+
+        <div id="controls-cascade" class="mode-controls hidden">
+          <label class="field">Reação
+            <select id="cascade-reaction"></select>
+          </label>
+          <label class="field"><span class="field-row">Momento do feixe: <span class="value" id="cascade-momentum-value">24.0 GeV/c</span></span>
+            <input type="range" id="cascade-momentum" min="1" max="100" value="24" step="0.5">
+          </label>
+        </div>
+
+        <label class="field"><span class="field-row">Campo magnético B: <span class="value" id="bfield-value">1.70 T</span></span>
+          <input type="range" id="bfield" min="0" max="3" value="1.7" step="0.05">
+        </label>
+
+        <label class="field">Meio da câmara
+          <select id="material-select"></select>
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2>Opções de exibição</h2>
+        <div class="options-grid">
+          <label class="checkbox"><input type="checkbox" id="opt-neutrals"> Traços neutros (tracejado)</label>
+          <label class="checkbox"><input type="checkbox" id="opt-labels" checked> Rótulos das partículas</label>
+          <label class="checkbox"><input type="checkbox" id="opt-background" checked> Traços de fundo do feixe</label>
+          <label class="checkbox"><input type="checkbox" id="opt-noise" checked> Ruído de fundo (bolhas)</label>
+          <label class="checkbox"><input type="checkbox" id="opt-colorcharge" checked> Colorir por carga</label>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-activity">
+        <h2>Roteiro guiado <span class="badge">RBEF</span></h2>
+        <div id="activity-text"></div>
+      </div>
+
+      <div class="panel" id="panel-event-info">
+        <h2>Evento atual</h2>
+        <div id="event-info" class="event-info">Nenhum evento gerado ainda.</div>
+      </div>
+
+    </aside>
+  </main>
+
+  <footer class="app-footer">
+    Simulador desenvolvido a partir de D. A. Fagundes, <em>Investigando a produção de pares e⁺e⁻ por meio da análise de imagens de uma câmara de bolhas</em> (RBEF, submetido) e M. Gagnon, <em>A bubble chamber simulator: a new tool for the physics classroom</em>, Phys. Educ. 46, 443 (2011).
+  </footer>
+</div>
+
+<!-- Modal: tabela de partículas -->
+<div class="modal-backdrop hidden" id="modal-particles">
+  <div class="modal">
+    <button class="modal-close" data-close-modal>✕</button>
+    <h2>Tabela de partículas</h2>
+    <input type="search" id="particle-search" placeholder="Buscar por símbolo ou nome…" class="search-input">
+    <div class="table-wrap">
+      <table id="particle-table">
+        <thead><tr><th>Partícula</th><th>Massa (MeV/c²)</th><th>Carga</th><th>B</th><th>S</th><th>Vida média</th><th>Decaimentos</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: gráficos -->
+<div class="modal-backdrop hidden" id="modal-charts">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close-modal>✕</button>
+    <h2>Gráficos de física</h2>
+    <div class="chart-tabs">
+      <button class="chart-tab active" data-chart="dedx">Perda de energia ⟨-dE/dx⟩ (Fig. 3 do artigo)</button>
+      <button class="chart-tab" data-chart="threshold">Limiar de produção de pares (Eq. 27)</button>
+    </div>
+    <div id="chart-dedx-panel" class="chart-panel">
+      <div class="chart-controls">
+        <span>Materiais:</span>
+        <div id="dedx-material-checks" class="chip-row"></div>
+      </div>
+      <canvas id="chart-dedx" height="340"></canvas>
+    </div>
+    <div id="chart-threshold-panel" class="chart-panel hidden">
+      <canvas id="chart-threshold" height="340"></canvas>
+      <p class="hint">A curva mostra (E<sub>γ</sub>)<sub>mín</sub> em função da massa do núcleo-alvo M<sub>N</sub>, convergindo ao valor sem recuo 2m<sub>e</sub>c² = 1,022 MeV quando M<sub>N</sub> → ∞ (Eqs. 27–28 do artigo).</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: sobre a física -->
+<div class="modal-backdrop hidden" id="modal-about">
+  <div class="modal">
+    <button class="modal-close" data-close-modal>✕</button>
+    <h2>Sobre este simulador</h2>
+    <div class="about-text">
+      <p>Este simulador reconstrói, em Python + web, as ideias de dois trabalhos: o roteiro analítico-investigativo de produção de pares e⁺e⁻ com fotografias reais da Câmara de Bolhas do CERN (artigo à RBEF) e o simulador clássico de câmara de bolhas de M. Gagnon (<em>Phys. Educ.</em> 46, 443, 2011).</p>
+      <ul>
+        <li><strong>Atividade 1</strong> — movimento circular uniforme relativístico e a relação p<sub>⊥</sub> = 0,3 B R.</li>
+        <li><strong>Atividade 2</strong> — perda de energia por ionização (Bethe-Bloch) e o colapso espiral dos traços.</li>
+        <li><strong>Atividade 3</strong> — limiar cinemático de produção de pares γ + N → e⁺ + e⁻ + N.</li>
+        <li><strong>Cascata</strong> — oito reações próton-alvo inspiradas em Gagnon (2011), com decaimentos gerados dinamicamente a partir da tabela de partículas (conservação de carga, número bariônico e estranheza).</li>
+      </ul>
+      <p>O núcleo de física é um pacote Python independente da interface (<code>bcs/</code>), reaproveitável em notebooks Jupyter para estender os estudos do artigo. Veja o <code>README.md</code> do projeto.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/vendor/chart.umd.min.js"></script>
+<script type="module" src="/assets/js/main.js"></script>
+</body>
+</html>
