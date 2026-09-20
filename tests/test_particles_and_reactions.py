@@ -7,11 +7,11 @@ from bcs.reactions import CASCADE_REACTIONS
 @pytest.mark.parametrize("reaction", CASCADE_REACTIONS, ids=lambda r: r.id)
 def test_cascade_reaction_conserves_quantum_numbers(reaction):
     beam, target = pdb.get(reaction.beam), pdb.get(reaction.target)
-    p1, p2 = pdb.get(reaction.product1), pdb.get(reaction.product2)
+    products = [pdb.get(s) for s in reaction.products]
 
-    dQ = (beam.charge + target.charge) - (p1.charge + p2.charge)
-    dB = (beam.baryon_number + target.baryon_number) - (p1.baryon_number + p2.baryon_number)
-    dS = (beam.strangeness + target.strangeness) - (p1.strangeness + p2.strangeness)
+    dQ = (beam.charge + target.charge) - sum(p.charge for p in products)
+    dB = (beam.baryon_number + target.baryon_number) - sum(p.baryon_number for p in products)
+    dS = (beam.strangeness + target.strangeness) - sum(p.strangeness for p in products)
 
     assert dQ == 0, f"{reaction.label}: carga não conservada"
     assert dB == 0, f"{reaction.label}: número bariônico não conservado"

@@ -168,22 +168,50 @@ def _pick_channel(rng: random.Random, channels):
 def _split_and_recurse(state: _BuildState, parent_vec: FourVector, daughter_symbols,
                         pos: tuple[float, float], generation: int,
                         parent_track_id: int, vertex_type: str) -> None:
-    if len(daughter_symbols) == 1:
+    """Distribui o quadrimomento `parent_vec` entre N partículas-filhas
+    (N >= 1). Para N >= 3 (ex.: a produção do Ω⁻, K⁻+p -> Ω⁻+K⁺+K⁰), o
+    problema é reduzido a splits sequenciais de 2 corpos -- a mesma técnica
+    usada em `pair_production.py` para aproximar espaço de fase de 3 corpos:
+    separa-se a primeira filha, e o restante é tratado como um "sistema"
+    virtual cuja massa invariante é sorteada dentro do intervalo
+    cinematicamente permitido; esse sistema é então recursivamente
+    dividido. Isso conserva energia-momento exatamente em cada etapa (a
+    mesma garantia já testada para `two_body_split`).
+    """
+    symbols = list(daughter_symbols)
+
+    if len(symbols) == 1:
         # decaimento com filhos invisíveis omitidos (ex.: nu) -- reatribui
         # o quadrimomento integralmente à única filha rastreável
-        sym = daughter_symbols[0]
+        sym = symbols[0]
         m = particle_db.get(sym).mass_mev
         p_mag = math.sqrt(max(parent_vec.E ** 2 - m ** 2, 0.0))
         vec = four_vector_from_pmag(p_mag, parent_vec.angle, m)
         _decay_recursive(state, sym, vec, pos, generation, parent_track_id, vertex_type)
         return
 
-    sym1, sym2 = daughter_symbols
-    m1, m2 = particle_db.get(sym1).mass_mev, particle_db.get(sym2).mass_mev
+    first_sym, rest_syms = symbols[0], symbols[1:]
+    m_first = particle_db.get(first_sym).mass_mev
     theta_cm = state.rng.uniform(0.0, 2.0 * math.pi)
-    v1, v2 = two_body_split(parent_vec, m1, m2, theta_cm)
-    _decay_recursive(state, sym1, v1, pos, generation, parent_track_id, vertex_type)
-    _decay_recursive(state, sym2, v2, pos, generation, parent_track_id, vertex_type)
+
+    if len(rest_syms) == 1:
+        m_rest = particle_db.get(rest_syms[0]).mass_mev
+        v_first, v_rest = two_body_split(parent_vec, m_first, m_rest, theta_cm)
+        _decay_recursive(state, first_sym, v_first, pos, generation, parent_track_id, vertex_type)
+        _decay_recursive(state, rest_syms[0], v_rest, pos, generation, parent_track_id, vertex_type)
+        return
+
+    # N >= 3: "sistema" virtual carregando o restante das filhas
+    rest_mass_sum = sum(particle_db.get(s).mass_mev for s in rest_syms)
+    m_system_max = parent_vec.mass - m_first
+    if m_system_max <= rest_mass_sum:
+        return  # cinematicamente proibido no momento de feixe escolhido
+    u = state.rng.random()
+    m_system = rest_mass_sum + u * (m_system_max - rest_mass_sum)
+
+    v_first, v_system = two_body_split(parent_vec, m_first, m_system, theta_cm)
+    _decay_recursive(state, first_sym, v_first, pos, generation, parent_track_id, vertex_type)
+    _split_and_recurse(state, v_system, rest_syms, pos, generation, parent_track_id, vertex_type)
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +252,7 @@ def generate_cascade_event(*, reaction_id: str, beam_momentum_gev: float, B_tesl
     state.vertices.append({"x": vertex_pos[0], "y": vertex_pos[1], "type": "collision",
                             "label": reaction.label})
 
-    _split_and_recurse(state, total_vec, (reaction.product1, reaction.product2),
+    _split_and_recurse(state, total_vec, reaction.products,
                         vertex_pos, 1, None, "collision")
 
     return {

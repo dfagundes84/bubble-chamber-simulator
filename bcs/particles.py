@@ -101,6 +101,11 @@ _add(Particle("Xi0", "xi neutro", 1314.86, 0, +1, -2, 2.90e-10,
 _add(Particle("Xi-", "xi negativo", 1321.71, -1, +1, -2, 1.639e-10,
               decays=(DecayChannel(("Lambda0", "pi-"), 1.0, "Ξ⁻ → Λ + π⁻"),)))
 
+_add(Particle("Omega-", "ômega negativo", 1672.45, -1, +1, -3, 8.21e-11,
+              decays=(DecayChannel(("Lambda0", "K-"), 0.678, "Ω⁻ → Λ + K⁻"),
+                       DecayChannel(("Xi0", "pi-"), 0.236, "Ω⁻ → Ξ⁰ + π⁻"),
+                       DecayChannel(("Xi-", "pi0"), 0.086, "Ω⁻ → Ξ⁻ + π⁰"),)))
+
 
 def get(symbol: str) -> Particle:
     try:

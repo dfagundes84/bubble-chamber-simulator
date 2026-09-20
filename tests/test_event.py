@@ -1,7 +1,10 @@
+import math
+
 import pytest
 
 from bcs import event as ev
-from bcs.reactions import CASCADE_REACTIONS
+from bcs import particles as pdb
+from bcs.reactions import CASCADE_REACTIONS, CASCADE_BY_ID
 
 
 @pytest.mark.parametrize("reaction", CASCADE_REACTIONS, ids=lambda r: r.id)
@@ -49,6 +52,59 @@ def test_pair_production_event_above_threshold_creates_electron_and_positron():
     p_track = next(t for t in data["tracks"] if t["particle"] == "e+")
     assert e_track["charge"] == -1
     assert p_track["charge"] == +1
+
+
+@pytest.mark.parametrize("seed", range(15))
+def test_omega_discovery_reaction_produces_omega_track(seed):
+    # feixe bem acima do limiar (~3.2 GeV/c) de K- + p -> Omega- + K+ + K0
+    data = ev.generate_cascade_event(reaction_id="k_omega_discovery", beam_momentum_gev=24.0,
+                                      B_tesla=1.7, material_key="h2_liquid", seed=seed,
+                                      n_background_tracks=0)
+    symbols = [t["particle"] for t in data["tracks"] if t["generation"] == 1]
+    assert "Omega-" in symbols, f"seed={seed}: Omega- ausente entre os produtos da colisao"
+
+
+def _initial_four_vector(track):
+    """Reconstrói o quadrivetor de um traço no início (antes de qualquer
+    perda de energia), a partir de p_start_mev, da massa da partícula e da
+    direção inicial (dada pelos dois primeiros pontos do traço)."""
+    mass = pdb.get(track["particle"]).mass_mev
+    p = track["p_start_mev"]
+    E = math.sqrt(p * p + mass * mass)
+    (x0, y0), (x1, y1) = track["points"][0], track["points"][1]
+    angle = math.atan2(y1 - y0, x1 - x0)
+    return E, p * math.cos(angle), p * math.sin(angle)
+
+
+def test_omega_discovery_conserves_energy_momentum_at_collision():
+    reaction = CASCADE_BY_ID["k_omega_discovery"]
+    beam_momentum_gev = 24.0
+    data = ev.generate_cascade_event(reaction_id="k_omega_discovery", beam_momentum_gev=beam_momentum_gev,
+                                      B_tesla=1.7, material_key="h2_liquid", seed=7,
+                                      n_background_tracks=0)
+
+    gen1_tracks = [t for t in data["tracks"] if t["generation"] == 1]
+    assert {t["particle"] for t in gen1_tracks} == set(reaction.products)
+
+    E_sum = px_sum = py_sum = 0.0
+    for t in gen1_tracks:
+        E, px, py = _initial_four_vector(t)
+        E_sum += E; px_sum += px; py_sum += py
+
+    beam = pdb.get(reaction.beam)
+    target = pdb.get(reaction.target)
+    p_beam_mev = beam_momentum_gev * 1000.0
+    E_beam = math.sqrt(p_beam_mev ** 2 + beam.mass_mev ** 2)
+    E_total = E_beam + target.mass_mev
+
+    # tolerância folgada (erro observado empiricamente < 0,2%): a direção
+    # inicial de cada traço é reconstruída a partir dos dois primeiros
+    # pontos armazenados da polilinha (não do ângulo exato passado ao
+    # integrador), o que introduz um pequeno erro de discretização
+    # (~ANGLE_RESOLUTION_RAD/2, ver track_builder.py)
+    assert E_sum == pytest.approx(E_total, rel=0.01)
+    assert px_sum == pytest.approx(p_beam_mev, rel=0.01)
+    assert py_sum == pytest.approx(0.0, abs=0.01 * p_beam_mev)
 
 
 def test_zero_field_gives_straight_tracks():

@@ -79,6 +79,8 @@ Escolha uma reação π⁻/K⁻ + p e observe a cascata completa de decaimentos,
 2. Em cada vértice, verifique se a soma das cargas antes e depois se conserva.
 3. Tente reconstruir a reação apenas a partir da topologia dos traços, como um físico faria com uma fotografia real — depois confira com a legenda.
 
+**Destaque histórico — a descoberta do Ω⁻:** selecione a reação `K⁻ + p → Ω⁻ + K⁺ + K⁰`, que reproduz a reação de produção usada por Barnes *et al.* na câmara de bolhas de 80 polegadas de Brookhaven em 1964 — a confirmação experimental que faltava para o modelo de quarks de Gell-Mann/Ne'eman (o "caminho óctuplo"), pois o Ω⁻ tinha estranheza −3 e massa previstas de antemão. Dispare a reação algumas vezes e observe a variedade de cadeias de decaimento (Ω⁻ → Λ + K⁻, cerca de 68% das vezes, ou Ω⁻ → Ξ⁰ + π⁻/Ξ⁻ + π⁰ no restante) — a identificação de 1964 dependeu exatamente de reconhecer essa cadeia específica numa única fotografia.
+
 ---
 
 ## Sugestões de avaliação

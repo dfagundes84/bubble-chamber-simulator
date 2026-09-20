@@ -18,7 +18,7 @@ Ele reconstrói as ideias dos dois trabalhos com física relativística de verda
 |---|---|---|
 | **Traço único** | Movimento circular relativístico em campo magnético uniforme (`p⊥ = 0,3 B R`); em baixo momento, a perda de energia por ionização (Bethe-Bloch) faz o traço colapsar em espiral | Seções II.A e II.C |
 | **Produção de pares** | Limiar cinemático `γ + N → e⁺ + e⁻ + N`, `(Eγ)mín = 2mₑc²(1+mₑ/M_N)` | Seção II.B |
-| **Cascata** | 8 reações π⁻/K⁻ + p inspiradas em Gagnon (2011), com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza) | — |
+| **Cascata** | 9 reações π⁻/K⁻ + p — 8 inspiradas em Gagnon (2011) + a descoberta histórica do Ω⁻ (BNL 1964) —, com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza) | — |
 
 Além disso: régua virtual de medição (ajuste de círculo por 3 cliques → raio → momento), tabela de partículas pesquisável, gráficos interativos (reprodução da Fig. 3 do artigo e da curva de limiar das Eqs. 27–28), e um "console" de chaves (energia/pressão/superaquecimento/campo) no espírito do simulador original de Gagnon.
 
@@ -42,7 +42,7 @@ bcs/            núcleo de física (puro Python, sem GUI)
   bethe_bloch.py       perda de energia por ionização (Eq. 29)
   pair_production.py    limiar e cinemática de γ + N -> e+ + e- + N (Eqs. 27-28)
   track_builder.py      integra trajetórias (curvatura + perda de energia -> espiral)
-  reactions.py           catálogo das 8 reações de colisão inicial (estilo Gagnon 2011)
+  reactions.py           catálogo de reações de colisão inicial (estilo Gagnon 2011 + Ω⁻)
   event.py                gerador de eventos: monta a árvore completa de decaimentos
   measurement.py          ajuste de círculo (régua virtual) e p = 0,3 B R
 
@@ -76,7 +76,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
 
-Os testes verificam, entre outras coisas: a relação `p = 0,3 B R` (Eq. 17), a conservação de energia-momento em todo split relativístico de 2 corpos, a conservação de carga/número bariônico/estranheza em todas as 8 reações de cascata (e nos decaimentos da tabela de partículas), o mínimo de ionização da curva de Bethe-Bloch (~4 MeV cm²/g para H₂ líquido, como na Fig. 3 do artigo), e a convergência do limiar de produção de pares ao valor sem recuo 2mₑc² (Eqs. 27–28).
+Os testes verificam, entre outras coisas: a relação `p = 0,3 B R` (Eq. 17), a conservação de energia-momento em todo split relativístico de N corpos (2 ou mais — necessário para a reação de 3 corpos da descoberta do Ω⁻), a conservação de carga/número bariônico/estranheza em todas as reações de cascata (e nos decaimentos da tabela de partículas), o mínimo de ionização da curva de Bethe-Bloch (~4 MeV cm²/g para H₂ líquido, como na Fig. 3 do artigo), e a convergência do limiar de produção de pares ao valor sem recuo 2mₑc² (Eqs. 27–28).
 
 ### Notebook — expandindo os estudos do artigo
 
@@ -108,6 +108,7 @@ Essas simplificações são intencionais (mantêm o núcleo de física pequeno e
 ## Créditos
 
 - D. A. Fagundes, *Investigando a produção de pares e⁺e⁻ por meio da análise de imagens de uma câmara de bolhas*, RBEF (submetido) — fundamentação teórica e roteiro das três atividades.
-- M. Gagnon, *A bubble chamber simulator: a new tool for the physics classroom*, Phys. Educ. **46**, 443 (2011) — inspiração original do simulador e das 8 reações de cascata.
+- M. Gagnon, *A bubble chamber simulator: a new tool for the physics classroom*, Phys. Educ. **46**, 443 (2011) — inspiração original do simulador e de oito das nove reações de cascata.
 - S'Cool LAB / CERN — fotografias históricas da Câmara de Bolhas de 2 m usadas como referência visual.
 - Particle Data Group, *Phys. Rev. D* **110**, 030001 (2024) — massas, vidas médias e razões de ramificação das partículas.
+- V. E. Barnes *et al.*, *Observation of a Hyperon with Strangeness Minus Three*, Phys. Rev. Lett. **12**, 204 (1964) — descoberta do Ω⁻, reproduzida na reação `k_omega_discovery`.
