@@ -10,8 +10,9 @@ class CascadeEventRequest(BaseModel):
     B_tesla: float = Field(1.7, ge=0, le=10)
     material_key: str = "h2_liquid"
     seed: int | None = None
-    gamma_conversion_probability: float = Field(0.65, ge=0, le=1)
+    photon_interaction_probability: float = Field(0.65, ge=0, le=1)
     n_background_tracks: int = Field(4, ge=0, le=12)
+    beam_scatter_probability: float = Field(0.15, ge=0, le=1)
 
 
 class SingleTrackRequest(BaseModel):
@@ -21,9 +22,11 @@ class SingleTrackRequest(BaseModel):
     B_tesla: float = Field(1.7, ge=0, le=10)
     material_key: str = "h2_liquid"
     seed: int | None = None
+    allow_scattering: bool = False
+    scatter_probability: float = Field(0.5, ge=0, le=1)
 
 
-class PairEventRequest(BaseModel):
+class PhotonEventRequest(BaseModel):
     photon_energy_mev: float = Field(50.0, gt=0, le=1_000_000)
     B_tesla: float = Field(1.7, ge=0, le=10)
     material_key: str = "h2_liquid"

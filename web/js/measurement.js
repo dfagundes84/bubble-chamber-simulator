@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api } from "./api.js?v=2";
 
 // Ferramenta de medição: clique em 3 pontos sobre um traço para ajustar um
 // círculo e estimar p = 0,3 * B * R (Eq. 17 do artigo) -- réplica moderna

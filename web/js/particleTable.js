@@ -1,4 +1,4 @@
-import { symbolLabel } from "./chamberRenderer.js";
+import { symbolLabel } from "./chamberRenderer.js?v=2";
 
 function fmtLifetime(s) {
   if (s == null) return "estável";

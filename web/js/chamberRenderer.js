@@ -221,7 +221,7 @@ export class ChamberRenderer {
       if (this.options.showLabels) {
         for (const t of tracks) this._drawLabel(ctx, t, progress);
       }
-      this._drawVertices(ctx);
+      this._drawVertices(ctx, progress);
     }
 
     this._drawMeasurement(ctx);
@@ -300,9 +300,15 @@ export class ChamberRenderer {
     ctx.restore();
   }
 
-  _drawVertices(ctx) {
+  _drawVertices(ctx, globalProgress) {
     if (!this.event || !this.event.vertices) return;
     for (const v of this.event.vertices) {
+      // um vértice só deve aparecer quando os traços que nascem dele
+      // começam a ser desenhados -- mesma fórmula de atraso usada em
+      // _drawTrack/_drawLabel, para não "adiantar" o produto antes do
+      // traço de origem ter se propagado até ali
+      const delay = Math.min(0.5, (v.generation || 0) * 0.12);
+      if (globalProgress < delay) continue;
       const [sx, sy] = this.physToScreen(v.x, v.y);
       ctx.save();
       ctx.globalAlpha = 0.9;
@@ -314,6 +320,15 @@ export class ChamberRenderer {
         ctx.strokeStyle = "#ff6bd6"; ctx.shadowColor = "#ff6bd6"; ctx.shadowBlur = 8;
         ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(sx, sy, 5, 0, 6.283); ctx.stroke();
+      } else if (v.type === "compton") {
+        ctx.strokeStyle = "#9d7bff"; ctx.shadowColor = "#9d7bff"; ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(sx, sy, 5, 0, 6.283); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx - 6, sy); ctx.lineTo(sx + 6, sy); ctx.stroke();
+      } else if (v.type === "scatter") {
+        ctx.fillStyle = "#7fd858";
+        ctx.shadowColor = "#7fd858"; ctx.shadowBlur = 7;
+        ctx.beginPath(); ctx.arc(sx, sy, 3.2, 0, 6.283); ctx.fill();
       } else {
         ctx.fillStyle = "#bde8ff";
         ctx.shadowColor = "#bde8ff"; ctx.shadowBlur = 6;

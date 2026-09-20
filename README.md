@@ -16,11 +16,13 @@ Ele reconstrói as ideias dos dois trabalhos com física relativística de verda
 
 | Aba do simulador | Física envolvida | Seção do artigo |
 |---|---|---|
-| **Traço único** | Movimento circular relativístico em campo magnético uniforme (`p⊥ = 0,3 B R`); em baixo momento, a perda de energia por ionização (Bethe-Bloch) faz o traço colapsar em espiral | Seções II.A e II.C |
-| **Produção de pares** | Limiar cinemático `γ + N → e⁺ + e⁻ + N`, `(Eγ)mín = 2mₑc²(1+mₑ/M_N)` | Seção II.B |
-| **Cascata** | 9 reações π⁻/K⁻ + p — 8 inspiradas em Gagnon (2011) + a descoberta histórica do Ω⁻ (BNL 1964) —, com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza) | — |
+| **Traço único** | Movimento circular relativístico em campo magnético uniforme (`p⊥ = 0,3 B R`); em baixo momento, a perda de energia por ionização (Bethe-Bloch) faz o traço colapsar em espiral; opcionalmente, um espalhamento elástico único com um elétron ou próton do meio (raio-delta/recuo de núcleo) | Seções II.A e II.C |
+| **Fóton na matéria** | Acima do limiar, produção de pares `γ + N → e⁺ + e⁻ + N`, `(Eγ)mín = 2mₑc²(1+mₑ/M_N)`; abaixo dele, espalhamento Compton `γ + e⁻ → γ' + e⁻'` | Seção II.B |
+| **Cascata** | 9 reações π⁻/K⁻ + p — 8 inspiradas em Gagnon (2011) + a descoberta histórica do Ω⁻ (BNL 1964) —, com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza); traços de feixe que podem sofrer espalhamento elástico, e fótons secundários (ex.: de π⁰ → γγ) que podem converter ou Comptonizar | — |
 
 Além disso: régua virtual de medição (ajuste de círculo por 3 cliques → raio → momento), tabela de partículas pesquisável, gráficos interativos (reprodução da Fig. 3 do artigo e da curva de limiar das Eqs. 27–28), e um "console" de chaves (energia/pressão/superaquecimento/campo) no espírito do simulador original de Gagnon.
+
+O feixe de prótons real usado nas fotografias do CERN (24 GeV/c, ver referência do S'Cool LAB abaixo) raramente colide de frente — na maior parte das vezes ele apenas ioniza o líquido continuamente, e ocasionalmente espalha elasticamente com um elétron (raio-delta) ou um próton do meio, ou gera um fóton secundário que converte em par ou Comptoniza. O simulador reproduz essas quatro assinaturas (elétron, próton, "elétron de Compton" e pósitron) da Atividade 3 do roteiro do S'Cool LAB, tanto isoladamente (modo "Traço único"/"Fóton na matéria") quanto entremeadas nos traços de fundo do modo "Cascata".
 
 A interface é deliberadamente enxuta: poucos controles, porém robustos, focados em trajetórias, processos e medidas. O roteiro didático de atividades (com sugestões de uso em sala, perguntas para discussão e avaliação) vive como documento independente em [`docs/roteiro_atividades.md`](docs/roteiro_atividades.md), para não competir por espaço com os controles do simulador.
 
@@ -41,6 +43,7 @@ bcs/            núcleo de física (puro Python, sem GUI)
   kinematics.py        quadrivetores, split relativístico de 2 corpos, MCU
   bethe_bloch.py       perda de energia por ionização (Eq. 29)
   pair_production.py    limiar e cinemática de γ + N -> e+ + e- + N (Eqs. 27-28)
+  em_scattering.py       espalhamento elástico (raio-delta/recuo) e espalhamento Compton
   track_builder.py      integra trajetórias (curvatura + perda de energia -> espiral)
   reactions.py           catálogo de reações de colisão inicial (estilo Gagnon 2011 + Ω⁻)
   event.py                gerador de eventos: monta a árvore completa de decaimentos
@@ -93,6 +96,7 @@ O notebook reproduz a Figura 3 e a curva de limiar diretamente do pacote `bcs`, 
 - **Movimento circular em campo magnético**: `p⊥ [GeV/c] ≈ 0,3 B[T] R[m]` (Eq. 17).
 - **Perda de energia por ionização**: fórmula completa de Bethe-Bloch (Eq. 29), incluindo o termo de correção de densidade δ(βγ) via aproximação de Sternheimer-Peierls (a partir de `I`, `Z`, `A`, `ρ` do meio — sem depender de tabelas de parâmetros ajustados por elemento, o que é adequado para fins didáticos mas não tem precisão de metrologia).
 - **Limiar de produção de pares** com correção de recuo do núcleo (Eqs. 27–28), incluindo a demonstração de por que um fóton isolado no vácuo não pode se converter (Seção II.B.2).
+- **Espalhamento elástico (raio-delta/recuo de núcleo) e espalhamento Compton**: a energia transferida num espalhamento elástico feixe-alvo é amostrada da distribuição diferencial correta, dσ/dT ∝ 1/T² (Rutherford/Møller — o mesmo resultado por trás do termo T_max de Bethe-Bloch), invertida em forma fechada a partir do boost do referencial de centro de massa; a cinemática de Compton usa a fórmula fechada padrão. Ambos verificados por conservação exata de energia-momento (`bcs/em_scattering.py`).
 - **Tabela de partículas real** (massas, vida média e canais de decaimento do PDG) com verificação automática, nos testes, de conservação de carga, número bariônico e estranheza.
 - **Traços gerados por integração numérica** (curvatura + perda de energia acopladas passo a passo), não por animações pré-definidas — é por isso que, em baixo momento, o traço genuinamente colapsa em espiral, e por isso que desligar o campo produz uma reta perfeita.
 
@@ -100,7 +104,8 @@ O notebook reproduz a Figura 3 e a curva de limiar diretamente do pacote `bcs`, 
 
 - A cinemática é tratada em 2D (o plano da fotografia), como em Gagnon (2011) — eventos reais são 3D e precisam de duas vistas estereoscópicas para reconstrução completa (mencionado na Seção II.B.3 do artigo).
 - O termo de correção de densidade de Bethe-Bloch usa a aproximação geral de Sternheimer-Peierls, não os parâmetros oficiais tabelados por elemento do PDG.
-- A conversão de fótons (pair production) usa uma amostragem simplificada do comprimento de conversão (não o comprimento de radiação `X₀` do meio).
+- A conversão de fótons (pair production) usa uma amostragem simplificada do comprimento de conversão (não o comprimento de radiação `X₀` do meio), e a escolha entre Compton e produção de pares usa uma probabilidade heurística em função da energia (não as seções de choque reais de Klein-Nishina/Bethe-Heitler).
+- O ângulo de espalhamento Compton é amostrado uniformemente (não pela distribuição angular real de Klein-Nishina, que favorece ângulos pequenos em altas energias).
 - Núcleos-alvo além do hidrogênio são aproximados por `M_N ≈ A × u` (ignorando o pequeno defeito de massa de ligação nuclear).
 
 Essas simplificações são intencionais (mantêm o núcleo de física pequeno e didático) e estão documentadas como oportunidades de extensão nos comentários do código e no notebook.
@@ -109,6 +114,6 @@ Essas simplificações são intencionais (mantêm o núcleo de física pequeno e
 
 - D. A. Fagundes, *Investigando a produção de pares e⁺e⁻ por meio da análise de imagens de uma câmara de bolhas*, RBEF (submetido) — fundamentação teórica e roteiro das três atividades.
 - M. Gagnon, *A bubble chamber simulator: a new tool for the physics classroom*, Phys. Educ. **46**, 443 (2011) — inspiração original do simulador e de oito das nove reações de cascata.
-- S'Cool LAB / CERN — fotografias históricas da Câmara de Bolhas de 2 m usadas como referência visual.
+- J. Woithe, R. Schmidt & F. Naumann, *Student worksheet: Bubble chamber pictures*, S'Cool LAB/CERN (2018) — fotografias históricas da Câmara de Bolhas de 2 m usadas como referência visual, e as quatro assinaturas de espalhamento (elétron, próton, "elétron de Compton", pósitron) reproduzidas nos modos "Traço único"/"Fóton na matéria"/"Cascata".
 - Particle Data Group, *Phys. Rev. D* **110**, 030001 (2024) — massas, vidas médias e razões de ramificação das partículas.
 - V. E. Barnes *et al.*, *Observation of a Hyperon with Strangeness Minus Three*, Phys. Rev. Lett. **12**, 204 (1964) — descoberta do Ω⁻, reproduzida na reação `k_omega_discovery`.

@@ -35,17 +35,22 @@ def test_single_track_low_momentum_electron_spirals_and_loses_significant_moment
     assert t["p_end_mev"] < 0.9 * t["p_start_mev"]
 
 
-def test_pair_production_event_below_threshold_has_no_visible_pair():
-    data = ev.generate_pair_production_event(photon_energy_mev=0.5, B_tesla=1.7,
-                                               material_key="h2_liquid", seed=1)
+def test_photon_event_below_threshold_compton_scatters_instead_of_nothing():
+    data = ev.generate_photon_interaction_event(photon_energy_mev=0.5, B_tesla=1.7,
+                                                  material_key="h2_liquid", seed=1)
     assert data["below_threshold"] is True
-    assert len(data["vertices"]) == 0
+    assert data["process"] == "compton"
+    assert any(v["type"] == "compton" for v in data["vertices"])
+    symbols = [t["particle"] for t in data["tracks"]]
+    assert "e-" in symbols and "e+" not in symbols
+    assert data["compton_electron_energy_mev"] > 0
 
 
-def test_pair_production_event_above_threshold_creates_electron_and_positron():
-    data = ev.generate_pair_production_event(photon_energy_mev=50.0, B_tesla=1.7,
-                                               material_key="h2_liquid", seed=1)
+def test_photon_event_above_threshold_creates_electron_and_positron():
+    data = ev.generate_photon_interaction_event(photon_energy_mev=50.0, B_tesla=1.7,
+                                                  material_key="h2_liquid", seed=1)
     assert data["below_threshold"] is False
+    assert data["process"] == "pair"
     symbols = [t["particle"] for t in data["tracks"]]
     assert "e-" in symbols and "e+" in symbols
     e_track = next(t for t in data["tracks"] if t["particle"] == "e-")
@@ -105,6 +110,55 @@ def test_omega_discovery_conserves_energy_momentum_at_collision():
     assert E_sum == pytest.approx(E_total, rel=0.01)
     assert px_sum == pytest.approx(p_beam_mev, rel=0.01)
     assert py_sum == pytest.approx(0.0, abs=0.01 * p_beam_mev)
+
+
+def test_single_track_forced_scattering_produces_scatter_vertex_and_recoil():
+    data = ev.generate_single_track_event(particle_symbol="p", momentum_mev=24000.0,
+                                           angle_deg=0, B_tesla=1.7, material_key="h2_liquid",
+                                           seed=1, allow_scattering=True, scatter_probability=1.0)
+    assert any(v["type"] == "scatter" for v in data["vertices"])
+    gen1 = [t for t in data["tracks"] if t["generation"] == 1]
+    assert len(gen1) == 2
+    symbols = {t["particle"] for t in gen1}
+    assert symbols == {"p", "e-"} or symbols == {"p", "p"}
+
+
+def test_single_track_no_scattering_by_default():
+    data = ev.generate_single_track_event(particle_symbol="p", momentum_mev=24000.0,
+                                           angle_deg=0, B_tesla=1.7, material_key="h2_liquid", seed=1)
+    assert data["vertices"] == []
+    assert len(data["tracks"]) == 1
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_beam_scattering_conserves_energy_momentum(seed):
+    p_beam_mev = 24000.0
+    data = ev.generate_single_track_event(particle_symbol="p", momentum_mev=p_beam_mev,
+                                           angle_deg=0, B_tesla=1.7, material_key="h2_liquid",
+                                           seed=seed, allow_scattering=True, scatter_probability=1.0)
+    scatter_track = data["tracks"][0]  # traço do feixe ate o ponto de espalhamento
+    gen1 = [t for t in data["tracks"] if t["generation"] == 1]
+
+    m_p = pdb.get("p").mass_mev
+    E_before = math.sqrt(scatter_track["p_end_mev"] ** 2 + m_p ** 2)
+    m_target = pdb.get(gen1[1]["particle"] if gen1[0]["particle"] == "p" else gen1[0]["particle"]).mass_mev
+    E_target_before = m_target  # alvo em repouso
+    E_total_before = E_before + E_target_before
+
+    E_sum = px_sum = py_sum = 0.0
+    for t in gen1:
+        E, px, py = _initial_four_vector(t)
+        E_sum += E; px_sum += px; py_sum += py
+
+    assert E_sum == pytest.approx(E_total_before, rel=0.02)
+    assert px_sum == pytest.approx(scatter_track["p_end_mev"], rel=0.02)
+
+
+def test_cascade_beam_scattering_can_be_disabled():
+    data = ev.generate_cascade_event(reaction_id="k_xi_minus_kplus", beam_momentum_gev=24.0,
+                                      B_tesla=1.7, material_key="h2_liquid", seed=1,
+                                      beam_scatter_probability=0.0)
+    assert not any(v["type"] == "scatter" for v in data["vertices"])
 
 
 def test_zero_field_gives_straight_tracks():

@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api } from "./api.js?v=2";
 
 const MATERIAL_COLORS = ["#43e6b5", "#ff9457", "#57b8ff", "#ffd76a", "#ff6bd6", "#9d7bff", "#7fd858", "#ff6b6b"];
 

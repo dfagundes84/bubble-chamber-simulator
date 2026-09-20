@@ -27,7 +27,7 @@ from bcs import reactions as reactions_db
 from bcs.materials import MATERIALS, nucleus_mass_mev
 
 from server.schemas import (CascadeEventRequest, DedxCurveRequest, MeasureRequest,
-                             PairEventRequest, SingleTrackRequest, ThresholdCurveRequest)
+                             PhotonEventRequest, SingleTrackRequest, ThresholdCurveRequest)
 
 WEB_DIR = ROOT_DIR / "web"
 
@@ -35,6 +35,19 @@ app = FastAPI(title="BCS -- Simulador de Câmara de Bolhas", version="0.1.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def no_cache_for_assets(request, call_next):
+    # evita que o navegador sirva JS/CSS desatualizados de uma sessão
+    # anterior depois que o simulador é atualizado. Usa "no-store" (não
+    # apenas "no-cache") porque alguns navegadores, na prática, ainda
+    # servem uma resposta em cache sem revalidar de fato mesmo com
+    # "no-cache" -- "no-store" proíbe guardar a resposta.
+    response = await call_next(request)
+    if request.url.path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/api/particles")
@@ -59,8 +72,9 @@ def post_event_cascade(req: CascadeEventRequest):
     return ev.generate_cascade_event(
         reaction_id=req.reaction_id, beam_momentum_gev=req.beam_momentum_gev,
         B_tesla=req.B_tesla, material_key=req.material_key, seed=req.seed,
-        gamma_conversion_probability=req.gamma_conversion_probability,
+        photon_interaction_probability=req.photon_interaction_probability,
         n_background_tracks=req.n_background_tracks,
+        beam_scatter_probability=req.beam_scatter_probability,
     )
 
 
@@ -71,13 +85,14 @@ def post_event_single(req: SingleTrackRequest):
     return ev.generate_single_track_event(
         particle_symbol=req.particle_symbol, momentum_mev=req.momentum_mev,
         angle_deg=req.angle_deg, B_tesla=req.B_tesla, material_key=req.material_key,
-        seed=req.seed,
+        seed=req.seed, allow_scattering=req.allow_scattering,
+        scatter_probability=req.scatter_probability,
     )
 
 
-@app.post("/api/event/pair")
-def post_event_pair(req: PairEventRequest):
-    return ev.generate_pair_production_event(
+@app.post("/api/event/photon")
+def post_event_photon(req: PhotonEventRequest):
+    return ev.generate_photon_interaction_event(
         photon_energy_mev=req.photon_energy_mev, B_tesla=req.B_tesla,
         material_key=req.material_key, seed=req.seed,
     )

@@ -36,7 +36,7 @@
     <section class="chamber-pane">
       <div class="activity-tabs" id="activity-tabs">
         <button class="tab active" data-mode="single">Traço único</button>
-        <button class="tab" data-mode="pair">Produção de pares</button>
+        <button class="tab" data-mode="photon">Fóton na matéria</button>
         <button class="tab" data-mode="cascade">Cascata</button>
       </div>
 
@@ -81,16 +81,18 @@
             <input type="range" id="single-angle" min="-45" max="45" value="0" step="1">
           </label>
           <p class="hint">Em baixo momento a curvatura muda visivelmente ao longo do traço (perda de energia por ionização): o raio encolhe a cada volta até o traço colapsar.</p>
+          <label class="checkbox"><input type="checkbox" id="opt-allow-scattering"> Permitir espalhamento elástico (raio-delta / recuo de núcleo)</label>
+          <p class="hint">Com essa opção ligada, o traço pode sofrer um único espalhamento elástico com um elétron ou próton do meio, chutando-o para fora com um "cotovelo" visível — as assinaturas "Electron"/"Proton" do roteiro do S'Cool LAB.</p>
         </div>
 
-        <div id="controls-pair" class="mode-controls hidden">
+        <div id="controls-photon" class="mode-controls hidden">
           <label class="field"><span class="field-row">Energia do fóton (E<sub>γ</sub>): <span class="value" id="pair-energy-value">50.0 MeV</span></span>
             <input type="range" id="pair-energy" min="0.3" max="500" value="50" step="0.1">
           </label>
           <div class="threshold-readout" id="threshold-readout">
-            Limiar (Eq. 27): <strong id="threshold-value">1,0226 MeV</strong>
+            Limiar de produção de pares (Eq. 27): <strong id="threshold-value">1,0226 MeV</strong>
           </div>
-          <p class="hint">Abaixo do limiar 2m<sub>e</sub>c²(1+m<sub>e</sub>/M<sub>N</sub>), o fóton atravessa a câmara sem deixar par — o processo é cinematicamente proibido (Seção II.B do artigo).</p>
+          <p class="hint">Acima do limiar 2m<sub>e</sub>c²(1+m<sub>e</sub>/M<sub>N</sub>), o fóton sempre produz o par e⁺e⁻ (assinatura em "V", sem traço incidente). Abaixo dele o par é cinematicamente proibido (Seção II.B do artigo), mas o fóton ainda pode sofrer espalhamento Compton com um elétron do meio — um único traço "surgindo do nada".</p>
         </div>
 
         <div id="controls-cascade" class="mode-controls hidden">
@@ -131,7 +133,7 @@
   </main>
 
   <footer class="app-footer">
-    Simulador desenvolvido a partir de D. A. Fagundes, <em>Investigando a produção de pares e⁺e⁻ por meio da análise de imagens de uma câmara de bolhas</em> (RBEF, submetido) e M. Gagnon, <em>A bubble chamber simulator: a new tool for the physics classroom</em>, Phys. Educ. 46, 443 (2011).
+    Simulador desenvolvido a partir de D. A. Fagundes, <em>Investigando a produção de pares e⁺e⁻ por meio da análise de imagens de uma câmara de bolhas</em> (RBEF, submetido); M. Gagnon, <em>A bubble chamber simulator: a new tool for the physics classroom</em>, Phys. Educ. 46, 443 (2011); e J. Woithe, R. Schmidt &amp; F. Naumann, <em>Student worksheet: Bubble chamber pictures</em>, S'Cool LAB/CERN (2018).
   </footer>
 </div>
 
@@ -179,11 +181,11 @@
     <button class="modal-close" data-close-modal>✕</button>
     <h2>Sobre este simulador</h2>
     <div class="about-text">
-      <p>Este simulador reconstrói, em Python + web, as ideias de dois trabalhos: o roteiro analítico-investigativo de produção de pares e⁺e⁻ com fotografias reais da Câmara de Bolhas do CERN (artigo à RBEF) e o simulador clássico de câmara de bolhas de M. Gagnon (<em>Phys. Educ.</em> 46, 443, 2011).</p>
+      <p>Este simulador reconstrói, em Python + web, as ideias de três trabalhos: o roteiro analítico-investigativo de produção de pares e⁺e⁻ com fotografias reais da Câmara de Bolhas do CERN (artigo à RBEF), o simulador clássico de câmara de bolhas de M. Gagnon (<em>Phys. Educ.</em> 46, 443, 2011), e o roteiro de identificação de partículas do S'Cool LAB/CERN (Woithe, Schmidt &amp; Naumann, 2018).</p>
       <ul>
-        <li><strong>Traço único</strong> — movimento circular uniforme relativístico (p<sub>⊥</sub> = 0,3 B R) e, em baixo momento, a perda de energia por ionização (Bethe-Bloch) fazendo o traço colapsar em espiral.</li>
-        <li><strong>Produção de pares</strong> — limiar cinemático de γ + N → e⁺ + e⁻ + N.</li>
-        <li><strong>Cascata</strong> — nove reações próton-alvo, oito delas inspiradas em Gagnon (2011) e uma reproduzindo a descoberta histórica do Ω⁻ (Barnes <em>et al.</em>, BNL 1964), com decaimentos gerados dinamicamente a partir da tabela de partículas (conservação de carga, número bariônico e estranheza).</li>
+        <li><strong>Traço único</strong> — movimento circular uniforme relativístico (p<sub>⊥</sub> = 0,3 B R), em baixo momento a perda de energia por ionização (Bethe-Bloch) fazendo o traço colapsar em espiral, e, opcionalmente, espalhamento elástico com um elétron/próton do meio (raio-delta e recuo de núcleo).</li>
+        <li><strong>Fóton na matéria</strong> — acima do limiar, produção de pares γ → e⁺ + e⁻; abaixo dele, espalhamento Compton γ + e⁻ → γ' + e⁻'.</li>
+        <li><strong>Cascata</strong> — nove reações próton-alvo, oito delas inspiradas em Gagnon (2011) e uma reproduzindo a descoberta histórica do Ω⁻ (Barnes <em>et al.</em>, BNL 1964), com decaimentos gerados dinamicamente a partir da tabela de partículas (conservação de carga, número bariônico e estranheza) e traços de feixe que podem sofrer espalhamento elástico ou conversão/Compton, como nas fotografias reais.</li>
       </ul>
       <p>O núcleo de física é um pacote Python independente da interface (<code>bcs/</code>), reaproveitável em notebooks Jupyter para estender os estudos do artigo. Veja o <code>README.md</code> do projeto — o roteiro didático detalhado de atividades está disponível separadamente, como documento próprio para uso em sala.</p>
     </div>
@@ -191,6 +193,6 @@
 </div>
 
 <script src="/assets/js/vendor/chart.umd.min.js"></script>
-<script type="module" src="/assets/js/main.js"></script>
+<script type="module" src="/assets/js/main.js?v=2"></script>
 </body>
 </html>

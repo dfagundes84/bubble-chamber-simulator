@@ -1,8 +1,8 @@
-import { api } from "./api.js";
-import { ChamberRenderer, symbolLabel } from "./chamberRenderer.js";
-import { MeasurementTool } from "./measurement.js";
-import { ChartsPanel } from "./charts.js";
-import { renderParticleTable } from "./particleTable.js";
+import { api } from "./api.js?v=2";
+import { ChamberRenderer, symbolLabel } from "./chamberRenderer.js?v=2";
+import { MeasurementTool } from "./measurement.js?v=2";
+import { ChartsPanel } from "./charts.js?v=2";
+import { renderParticleTable } from "./particleTable.js?v=2";
 
 const SINGLE_TRACK_PARTICLES = ["p", "e-", "e+", "mu-", "mu+", "pi+", "pi-", "K+", "K-"];
 
@@ -67,7 +67,7 @@ function updateSwitchAvailability() {
 function captionForMode(mode) {
   switch (mode) {
     case "single": return "Traço único: ajuste partícula, momento e ângulo, então dispare o feixe.";
-    case "pair": return "Produção de pares: ajuste Eγ e veja se o par é produzido.";
+    case "photon": return "Fóton na matéria: ajuste Eγ e veja se ocorre produção de pares ou espalhamento Compton.";
     case "cascade": return "Cascata completa: colisão inicial seguida da árvore de decaimentos.";
     default: return "";
   }
@@ -116,7 +116,7 @@ function updateHud() {
   el("hud-material").textContent = mat ? mat.name_pt : "—";
   let momentumText = "";
   if (state.mode === "single") momentumText = `p = ${formatMomentum(sliderToMomentumMev(parseFloat(el("single-momentum").value)))}`;
-  else if (state.mode === "pair") momentumText = `Eγ = ${parseFloat(el("pair-energy").value).toFixed(1)} MeV`;
+  else if (state.mode === "photon") momentumText = `Eγ = ${parseFloat(el("pair-energy").value).toFixed(1)} MeV`;
   else momentumText = `p = ${parseFloat(el("cascade-momentum").value).toFixed(1)} GeV/c`;
   el("hud-momentum").textContent = momentumText;
 }
@@ -132,11 +132,11 @@ function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
   document.querySelectorAll(".mode-controls").forEach((div) => div.classList.add("hidden"));
-  const map = { single: "controls-single", pair: "controls-pair", cascade: "controls-cascade" };
+  const map = { single: "controls-single", photon: "controls-photon", cascade: "controls-cascade" };
   el(map[mode]).classList.remove("hidden");
   updateHud();
   updateSwitchAvailability();
-  if (mode === "pair") updatePairThreshold();
+  if (mode === "photon") updatePairThreshold();
 }
 
 // ---------------------------------------------------------------- firing
@@ -152,9 +152,10 @@ async function fireBeam() {
         momentum_mev: sliderToMomentumMev(parseFloat(el("single-momentum").value)),
         angle_deg: parseFloat(el("single-angle").value),
         B_tesla: B, material_key: materialKey,
+        allow_scattering: el("opt-allow-scattering").checked,
       });
-    } else if (state.mode === "pair") {
-      data = await api.eventPair({
+    } else if (state.mode === "photon") {
+      data = await api.eventPhoton({
         photon_energy_mev: parseFloat(el("pair-energy").value),
         B_tesla: B, material_key: materialKey,
       });
@@ -178,14 +179,16 @@ function renderEventInfo(data) {
   const box = el("event-info");
   box.innerHTML = "";
 
-  if (state.mode === "pair") {
+  if (state.mode === "photon") {
     const rows = [
       ["Eγ", `${data.photon_energy_mev.toFixed(3)} MeV`],
-      ["Limiar (Eq. 27)", `${data.threshold_mev.toFixed(4)} MeV`],
-      ["Abaixo do limiar?", data.below_threshold ? "sim — par não produzido" : "não"],
+      ["Limiar de pares (Eq. 27)", `${data.threshold_mev.toFixed(4)} MeV`],
+      ["Processo", data.process === "pair" ? "produção de pares (γ → e⁺e⁻)" : "espalhamento Compton (γ + e⁻ → γ' + e⁻')"],
     ];
-    if (!data.below_threshold) {
+    if (data.process === "pair") {
       rows.push(["Massa invariante do par", `${data.pair_invariant_mass_mev.toFixed(3)} MeV/c²`]);
+    } else {
+      rows.push(["Energia do elétron de recuo", `${data.compton_electron_energy_mev.toFixed(3)} MeV`]);
     }
     for (const [k, v] of rows) box.appendChild(rowEl(k, v));
   } else if (data.reaction_label) {
@@ -204,7 +207,7 @@ function renderEventInfo(data) {
     row.appendChild(dot);
     const text = document.createElement("span");
     const pInfo = t.particle === "gamma"
-      ? `E=${t.p_start_mev.toFixed(2)} MeV (${t.stop_reason === "converted" ? "converteu" : t.stop_reason === "below_threshold" ? "abaixo do limiar" : "saiu sem converter"})`
+      ? `E=${t.p_start_mev.toFixed(2)} MeV (${t.stop_reason === "converted" ? "converteu" : t.stop_reason === "compton" ? "espalhou (Compton)" : "saiu sem interagir"})`
       : `${t.p_start_mev.toFixed(1)}→${t.p_end_mev.toFixed(1)} MeV/c${t.is_spiral ? " · espiral" : ""}`;
     text.textContent = `${symbolLabel(t.particle)} · ${pInfo}`;
     row.appendChild(text);
@@ -258,7 +261,7 @@ function wireControls() {
 
   el("material-select").addEventListener("change", () => {
     updateHud();
-    if (state.mode === "pair") updatePairThreshold();
+    if (state.mode === "photon") updatePairThreshold();
   });
 
   // opções de exibição
