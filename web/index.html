@@ -35,10 +35,9 @@
 
     <section class="chamber-pane">
       <div class="activity-tabs" id="activity-tabs">
-        <button class="tab active" data-mode="single">1 · MCU e curvatura</button>
-        <button class="tab" data-mode="energyloss">2 · Perda de energia</button>
-        <button class="tab" data-mode="pair">3 · Produção de pares</button>
-        <button class="tab" data-mode="cascade">Cascata (livre)</button>
+        <button class="tab active" data-mode="single">Traço único</button>
+        <button class="tab" data-mode="pair">Produção de pares</button>
+        <button class="tab" data-mode="cascade">Cascata</button>
       </div>
 
       <div class="chamber-frame">
@@ -76,21 +75,12 @@
             <select id="single-particle"></select>
           </label>
           <label class="field"><span class="field-row">Momento inicial: <span class="value" id="single-momentum-value">1000 MeV/c</span></span>
-            <input type="range" id="single-momentum" min="10" max="30000" value="1000" step="10">
+            <input type="range" id="single-momentum" min="0" max="1000" value="683" step="1">
           </label>
           <label class="field"><span class="field-row">Ângulo de entrada: <span class="value" id="single-angle-value">0°</span></span>
             <input type="range" id="single-angle" min="-45" max="45" value="0" step="1">
           </label>
-        </div>
-
-        <div id="controls-energyloss" class="mode-controls hidden">
-          <label class="field">Partícula
-            <select id="eloss-particle"></select>
-          </label>
-          <label class="field"><span class="field-row">Momento inicial: <span class="value" id="eloss-momentum-value">12 MeV/c</span></span>
-            <input type="range" id="eloss-momentum" min="2" max="200" value="12" step="1">
-          </label>
-          <p class="hint">Em baixo momento a perda de energia por ionização é visível: o raio de curvatura encolhe a cada volta até o traço "colapsar" — exatamente a assinatura discutida na Seção II.C do artigo.</p>
+          <p class="hint">Em baixo momento a curvatura muda visivelmente ao longo do traço (perda de energia por ionização): o raio encolhe a cada volta até o traço colapsar.</p>
         </div>
 
         <div id="controls-pair" class="mode-controls hidden">
@@ -130,11 +120,6 @@
           <label class="checkbox"><input type="checkbox" id="opt-noise" checked> Ruído de fundo (bolhas)</label>
           <label class="checkbox"><input type="checkbox" id="opt-colorcharge" checked> Colorir por carga</label>
         </div>
-      </div>
-
-      <div class="panel" id="panel-activity">
-        <h2>Roteiro guiado <span class="badge">RBEF</span></h2>
-        <div id="activity-text"></div>
       </div>
 
       <div class="panel" id="panel-event-info">
@@ -196,12 +181,11 @@
     <div class="about-text">
       <p>Este simulador reconstrói, em Python + web, as ideias de dois trabalhos: o roteiro analítico-investigativo de produção de pares e⁺e⁻ com fotografias reais da Câmara de Bolhas do CERN (artigo à RBEF) e o simulador clássico de câmara de bolhas de M. Gagnon (<em>Phys. Educ.</em> 46, 443, 2011).</p>
       <ul>
-        <li><strong>Atividade 1</strong> — movimento circular uniforme relativístico e a relação p<sub>⊥</sub> = 0,3 B R.</li>
-        <li><strong>Atividade 2</strong> — perda de energia por ionização (Bethe-Bloch) e o colapso espiral dos traços.</li>
-        <li><strong>Atividade 3</strong> — limiar cinemático de produção de pares γ + N → e⁺ + e⁻ + N.</li>
+        <li><strong>Traço único</strong> — movimento circular uniforme relativístico (p<sub>⊥</sub> = 0,3 B R) e, em baixo momento, a perda de energia por ionização (Bethe-Bloch) fazendo o traço colapsar em espiral.</li>
+        <li><strong>Produção de pares</strong> — limiar cinemático de γ + N → e⁺ + e⁻ + N.</li>
         <li><strong>Cascata</strong> — oito reações próton-alvo inspiradas em Gagnon (2011), com decaimentos gerados dinamicamente a partir da tabela de partículas (conservação de carga, número bariônico e estranheza).</li>
       </ul>
-      <p>O núcleo de física é um pacote Python independente da interface (<code>bcs/</code>), reaproveitável em notebooks Jupyter para estender os estudos do artigo. Veja o <code>README.md</code> do projeto.</p>
+      <p>O núcleo de física é um pacote Python independente da interface (<code>bcs/</code>), reaproveitável em notebooks Jupyter para estender os estudos do artigo. Veja o <code>README.md</code> do projeto — o roteiro didático detalhado de atividades está disponível separadamente, como documento próprio para uso em sala.</p>
     </div>
   </div>
 </div>

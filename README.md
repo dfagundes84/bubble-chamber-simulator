@@ -14,14 +14,15 @@ Ele reconstrói as ideias dos dois trabalhos com física relativística de verda
 
 ## O que o simulador faz
 
-| Atividade (menu) | Física envolvida | Seção do artigo |
+| Aba do simulador | Física envolvida | Seção do artigo |
 |---|---|---|
-| **1 · MCU e curvatura** | Movimento circular relativístico em campo magnético uniforme, `p⊥ = 0,3 B R` | Seção II.A |
-| **2 · Perda de energia** | Fórmula de Bethe-Bloch, espiral de raio decrescente até o traço colapsar | Seção II.C |
-| **3 · Produção de pares** | Limiar cinemático `γ + N → e⁺ + e⁻ + N`, `(Eγ)mín = 2mₑc²(1+mₑ/M_N)` | Seção II.B |
-| **Cascata (livre)** | 8 reações π⁻/K⁻ + p inspiradas em Gagnon (2011), com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza) | — |
+| **Traço único** | Movimento circular relativístico em campo magnético uniforme (`p⊥ = 0,3 B R`); em baixo momento, a perda de energia por ionização (Bethe-Bloch) faz o traço colapsar em espiral | Seções II.A e II.C |
+| **Produção de pares** | Limiar cinemático `γ + N → e⁺ + e⁻ + N`, `(Eγ)mín = 2mₑc²(1+mₑ/M_N)` | Seção II.B |
+| **Cascata** | 8 reações π⁻/K⁻ + p inspiradas em Gagnon (2011), com árvore de decaimentos gerada dinamicamente (conservação de carga, número bariônico e estranheza) | — |
 
-Além disso: régua virtual de medição (ajuste de círculo por 3 cliques → raio → momento), tabela de partículas pesquisável, gráficos interativos (reprodução da Fig. 3 do artigo e da curva de limiar das Eqs. 27–28), roteiro guiado com anotações do estudante, e um "console" de chaves (energia/pressão/superaquecimento/campo) no espírito do simulador original de Gagnon.
+Além disso: régua virtual de medição (ajuste de círculo por 3 cliques → raio → momento), tabela de partículas pesquisável, gráficos interativos (reprodução da Fig. 3 do artigo e da curva de limiar das Eqs. 27–28), e um "console" de chaves (energia/pressão/superaquecimento/campo) no espírito do simulador original de Gagnon.
+
+A interface é deliberadamente enxuta: poucos controles, porém robustos, focados em trajetórias, processos e medidas. O roteiro didático de atividades (com sugestões de uso em sala, perguntas para discussão e avaliação) vive como documento independente em [`docs/roteiro_atividades.md`](docs/roteiro_atividades.md), para não competir por espaço com os controles do simulador.
 
 ## Arquitetura e escolha de linguagem
 
@@ -49,6 +50,7 @@ server/         API FastAPI (expõe bcs/ via HTTP)
 web/            interface (HTML/CSS/JS vanilla + Chart.js local)
 tests/          suíte de testes (pytest) do núcleo de física
 notebooks/      exemplos de uso do núcleo em Jupyter, para expandir os estudos
+docs/           roteiro didático de atividades (documento independente da interface)
 run.py          ponto de entrada único (sobe o servidor e abre o navegador)
 ```
 

@@ -2,11 +2,30 @@ import { api } from "./api.js";
 import { ChamberRenderer, symbolLabel } from "./chamberRenderer.js";
 import { MeasurementTool } from "./measurement.js";
 import { ChartsPanel } from "./charts.js";
-import { renderActivity } from "./activities.js";
 import { renderParticleTable } from "./particleTable.js";
 
 const SINGLE_TRACK_PARTICLES = ["p", "e-", "e+", "mu-", "mu+", "pi+", "pi-", "K+", "K-"];
-const ELOSS_PARTICLES = ["e-", "e+", "mu-", "mu+", "pi+", "pi-", "p"];
+
+// o controle de momento (modo "Traço único") usa uma escala logarítmica de
+// 2 MeV/c a 30 GeV/c num slider bruto de 0-1000, para dar controle fino tanto
+// no regime de baixo momento (onde a perda de energia por ionização é
+// visível) quanto no regime relativístico (traços quase retilíneos)
+const MOMENTUM_MIN_MEV = 2, MOMENTUM_MAX_MEV = 30000;
+const MOMENTUM_LOG_MIN = Math.log10(MOMENTUM_MIN_MEV);
+const MOMENTUM_LOG_MAX = Math.log10(MOMENTUM_MAX_MEV);
+const MOMENTUM_SLIDER_MAX = 1000;
+
+function sliderToMomentumMev(raw) {
+  const t = raw / MOMENTUM_SLIDER_MAX;
+  return Math.pow(10, MOMENTUM_LOG_MIN + t * (MOMENTUM_LOG_MAX - MOMENTUM_LOG_MIN));
+}
+function momentumMevToSlider(mev) {
+  const t = (Math.log10(mev) - MOMENTUM_LOG_MIN) / (MOMENTUM_LOG_MAX - MOMENTUM_LOG_MIN);
+  return Math.round(t * MOMENTUM_SLIDER_MAX);
+}
+function formatMomentum(mev) {
+  return mev >= 1000 ? `${(mev / 1000).toFixed(2)} GeV/c` : `${mev.toFixed(mev < 20 ? 2 : 0)} MeV/c`;
+}
 
 const el = (id) => document.getElementById(id);
 
@@ -47,8 +66,7 @@ function updateSwitchAvailability() {
 
 function captionForMode(mode) {
   switch (mode) {
-    case "single": return "Traço único: ajuste momento e ângulo, então dispare o feixe.";
-    case "energyloss": return "Baixo momento: observe o raio de curvatura encolher a cada volta.";
+    case "single": return "Traço único: ajuste partícula, momento e ângulo, então dispare o feixe.";
     case "pair": return "Produção de pares: ajuste Eγ e veja se o par é produzido.";
     case "cascade": return "Cascata completa: colisão inicial seguida da árvore de decaimentos.";
     default: return "";
@@ -66,11 +84,14 @@ async function populateSelectors() {
   state.particleByKey = Object.fromEntries(particles.map((p) => [p.symbol, p]));
 
   fillSelect(el("single-particle"), SINGLE_TRACK_PARTICLES.map((s) => [s, labelFor(s)]), "p");
-  fillSelect(el("eloss-particle"), ELOSS_PARTICLES.map((s) => [s, labelFor(s)]), "e-");
   fillSelect(el("material-select"), materials.map((m) => [m.key, m.name_pt]), "h2_liquid");
   fillSelect(el("cascade-reaction"),
     [["random", "Aleatória (como no Gagnon 2011)"], ...reactions.map((r) => [r.id, r.label])],
     "random");
+
+  const momentumInput = el("single-momentum");
+  momentumInput.value = momentumMevToSlider(1000);
+  el("single-momentum-value").textContent = formatMomentum(sliderToMomentumMev(momentumInput.value));
 }
 
 function labelFor(symbol) {
@@ -94,8 +115,7 @@ function updateHud() {
   const mat = state.materials.find((m) => m.key === el("material-select").value);
   el("hud-material").textContent = mat ? mat.name_pt : "—";
   let momentumText = "";
-  if (state.mode === "single") momentumText = `p = ${parseFloat(el("single-momentum").value).toFixed(0)} MeV/c`;
-  else if (state.mode === "energyloss") momentumText = `p = ${parseFloat(el("eloss-momentum").value).toFixed(0)} MeV/c`;
+  if (state.mode === "single") momentumText = `p = ${formatMomentum(sliderToMomentumMev(parseFloat(el("single-momentum").value)))}`;
   else if (state.mode === "pair") momentumText = `Eγ = ${parseFloat(el("pair-energy").value).toFixed(1)} MeV`;
   else momentumText = `p = ${parseFloat(el("cascade-momentum").value).toFixed(1)} GeV/c`;
   el("hud-momentum").textContent = momentumText;
@@ -112,9 +132,8 @@ function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
   document.querySelectorAll(".mode-controls").forEach((div) => div.classList.add("hidden"));
-  const map = { single: "controls-single", energyloss: "controls-energyloss", pair: "controls-pair", cascade: "controls-cascade" };
+  const map = { single: "controls-single", pair: "controls-pair", cascade: "controls-cascade" };
   el(map[mode]).classList.remove("hidden");
-  renderActivity(mode, el("activity-text"));
   updateHud();
   updateSwitchAvailability();
   if (mode === "pair") updatePairThreshold();
@@ -130,15 +149,9 @@ async function fireBeam() {
     if (state.mode === "single") {
       data = await api.eventSingle({
         particle_symbol: el("single-particle").value,
-        momentum_mev: parseFloat(el("single-momentum").value),
+        momentum_mev: sliderToMomentumMev(parseFloat(el("single-momentum").value)),
         angle_deg: parseFloat(el("single-angle").value),
         B_tesla: B, material_key: materialKey,
-      });
-    } else if (state.mode === "energyloss") {
-      data = await api.eventSingle({
-        particle_symbol: el("eloss-particle").value,
-        momentum_mev: parseFloat(el("eloss-momentum").value),
-        angle_deg: 0, B_tesla: B, material_key: materialKey,
       });
     } else if (state.mode === "pair") {
       data = await api.eventPair({
@@ -223,10 +236,14 @@ function wireControls() {
     el("event-info").textContent = "Nenhum evento gerado ainda.";
   });
 
+  el("single-momentum").addEventListener("input", (e) => {
+    const mev = sliderToMomentumMev(parseFloat(e.target.value));
+    el("single-momentum-value").textContent = formatMomentum(mev);
+    updateHud();
+  });
+
   const rangeIds = [
-    ["single-momentum", "single-momentum-value", (v) => `${Math.round(v)} MeV/c`],
     ["single-angle", "single-angle-value", (v) => `${Math.round(v)}°`],
-    ["eloss-momentum", "eloss-momentum-value", (v) => `${Math.round(v)} MeV/c`],
     ["pair-energy", "pair-energy-value", (v) => `${v.toFixed(1)} MeV`],
     ["cascade-momentum", "cascade-momentum-value", (v) => `${v.toFixed(1)} GeV/c`],
     ["bfield", "bfield-value", (v) => `${v.toFixed(2)} T`],
