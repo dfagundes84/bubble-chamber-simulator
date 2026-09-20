@@ -1,6 +1,14 @@
 // Renderização da câmara: converte a geometria de traços (em metros, vinda
 // da API) em um desenho estilo fotografia de câmara de bolhas, com traços
 // que "crescem" (simulando a nucleação de bolhas) e brilho (glow) por carga.
+//
+// Desempenho: o canvas só é redesenhado sob demanda (mudança de evento,
+// opções, medição ou redimensionamento) ou durante a animação de entrada de
+// um traço -- nunca em loop contínuo de 60 fps parado. O fundo (gradiente +
+// ruído + marcas de referência) é pré-renderizado uma única vez em um canvas
+// auxiliar e apenas copiado a cada quadro. O "brilho" dos traços usa duas
+// passadas de traçado (halo largo e translúcido + linha nítida) em vez de
+// `shadowBlur`, que é uma operação cara para caminhos com centenas de pontos.
 
 const COLORS = {
   neg: "#57b8ff",
@@ -9,12 +17,12 @@ const COLORS = {
   classic: "#eaffef",
 };
 
-function lerp(a, b, t) { return a + (b - a) * t; }
-
 export class ChamberRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
+    this.bgCanvas = document.createElement("canvas");
+    this.bgCtx = this.bgCanvas.getContext("2d");
     this.event = null;
     this.options = {
       showNeutrals: false, showLabels: true, showBackground: true,
@@ -28,36 +36,105 @@ export class ChamberRenderer {
     this.measurePoints = [];
     this.measureCircle = null;
     this.noiseDots = [];
+    this._rafHandle = null;
+    this._raf = this._raf.bind(this);
     this._resizeObserver = new ResizeObserver(() => this.resize());
     this._resizeObserver.observe(canvas.parentElement);
-    this.resize();
     this._genNoise();
-    this._raf = this._raf.bind(this);
-    requestAnimationFrame(this._raf);
+    this.resize(); // já agenda o primeiro quadro
+  }
+
+  // --- agendamento de renderização (sob demanda, nunca em loop parado) ----
+  requestRender() {
+    if (this._rafHandle != null) return;
+    this._rafHandle = requestAnimationFrame(this._raf);
+  }
+
+  _raf(t) {
+    this._rafHandle = null;
+    this.render(t);
+    if (this.animating) this.requestRender();
   }
 
   resize() {
     const rect = this.canvas.parentElement.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.max(1, Math.round(rect.width * dpr));
-    this.canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    const pxW = Math.max(1, Math.round(rect.width * dpr));
+    const pxH = Math.max(1, Math.round(rect.height * dpr));
+    this.canvas.width = pxW; this.canvas.height = pxH;
     this.canvas.style.width = rect.width + "px";
     this.canvas.style.height = rect.height + "px";
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    this.bgCanvas.width = pxW; this.bgCanvas.height = pxH;
+    this.bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     this.cssWidth = rect.width;
     this.cssHeight = rect.height;
     this._genNoise();
+    this._rebuildStaticLayer();
+    this.requestRender();
   }
 
   _genNoise() {
-    const n = 140;
+    const n = 110;
     this.noiseDots = Array.from({ length: n }, () => ({
       x: Math.random(), y: Math.random(), r: Math.random() * 1.1 + 0.2,
       a: Math.random() * 0.10 + 0.02,
     }));
   }
 
-  setOptions(opts) { Object.assign(this.options, opts); }
+  // fundo + ruído + marcas de referência: caro para desenhar, mas nunca
+  // muda entre quadros, então é pré-renderizado uma única vez por resize
+  _rebuildStaticLayer() {
+    const ctx = this.bgCtx;
+    const w = this.cssWidth, h = this.cssHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    const g = ctx.createRadialGradient(w * 0.5, h * 0.42, Math.min(w, h) * 0.15, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+    g.addColorStop(0, "#0a2c1f");
+    g.addColorStop(0.55, "#062017");
+    g.addColorStop(1, "#020e09");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    if (this.options.showNoise) {
+      for (const d of this.noiseDots) {
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(210,255,235,${d.a})`;
+        ctx.arc(d.x * w, d.y * h, d.r, 0, 6.283);
+        ctx.fill();
+      }
+    }
+
+    // marcas de referência tipo "x" nas bordas superior/inferior, como nas
+    // fotografias reais da câmara (Figuras 4-6 do artigo)
+    ctx.strokeStyle = "rgba(210,255,235,0.22)";
+    ctx.lineWidth = 1.1;
+    for (const y of [12, h - 12]) {
+      for (let i = 0; i < 16; i++) {
+        const x = 14 + i * ((w - 28) / 15);
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4);
+        ctx.moveTo(x - 4, y + 4); ctx.lineTo(x + 4, y - 4);
+        ctx.stroke();
+      }
+    }
+
+    // vinheta
+    const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  setOptions(opts) {
+    const noiseChanged = "showNoise" in opts && opts.showNoise !== this.options.showNoise;
+    Object.assign(this.options, opts);
+    if (noiseChanged) this._rebuildStaticLayer();
+    this.requestRender();
+  }
 
   setEvent(eventData) {
     this.event = eventData;
@@ -66,12 +143,14 @@ export class ChamberRenderer {
     this.animating = true;
     this.measurePoints = [];
     this.measureCircle = null;
+    this.requestRender();
   }
 
   clear() {
     this.event = null;
     this.measurePoints = [];
     this.measureCircle = null;
+    this.requestRender();
   }
 
   // --- transformação física (m) <-> tela (px, origem no canto sup. esq.) ---
@@ -117,24 +196,18 @@ export class ChamberRenderer {
   addMeasurePoint(px, py) {
     if (this.measurePoints.length >= 3) this.measurePoints = [];
     this.measurePoints.push(this.screenToPhys(px, py));
+    this.requestRender();
     return this.measurePoints.length;
   }
 
-  resetMeasure() { this.measurePoints = []; this.measureCircle = null; }
-  setMeasureCircle(circle) { this.measureCircle = circle; }
-
-  _raf(t) {
-    this.render(t);
-    requestAnimationFrame(this._raf);
-  }
+  resetMeasure() { this.measurePoints = []; this.measureCircle = null; this.requestRender(); }
+  setMeasureCircle(circle) { this.measureCircle = circle; this.requestRender(); }
 
   render(now) {
     const ctx = this.ctx;
     const w = this.cssWidth, h = this.cssHeight;
     ctx.clearRect(0, 0, w, h);
-
-    this._drawBackground(ctx, w, h);
-    this._drawFiducials(ctx, w, h);
+    ctx.drawImage(this.bgCanvas, 0, 0, w, h);
 
     let progress = 1;
     if (this.animating && this.animStart != null) {
@@ -148,54 +221,21 @@ export class ChamberRenderer {
       if (this.options.showLabels) {
         for (const t of tracks) this._drawLabel(ctx, t, progress);
       }
-      this._drawVertices(ctx, progress);
+      this._drawVertices(ctx);
     }
 
     this._drawMeasurement(ctx);
-    this._drawFrameVignette(ctx, w, h);
   }
 
-  _drawBackground(ctx, w, h) {
-    const g = ctx.createRadialGradient(w * 0.5, h * 0.42, Math.min(w, h) * 0.15, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
-    g.addColorStop(0, "#0a2c1f");
-    g.addColorStop(0.55, "#062017");
-    g.addColorStop(1, "#020e09");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-
-    if (this.options.showNoise) {
-      for (const d of this.noiseDots) {
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(210,255,235,${d.a})`;
-        ctx.arc(d.x * w, d.y * h, d.r, 0, 6.283);
-        ctx.fill();
-      }
+  _buildPath(points) {
+    const path = new Path2D();
+    const [sx0, sy0] = this.physToScreen(points[0][0], points[0][1]);
+    path.moveTo(sx0, sy0);
+    for (let i = 1; i < points.length; i++) {
+      const [sx, sy] = this.physToScreen(points[i][0], points[i][1]);
+      path.lineTo(sx, sy);
     }
-  }
-
-  _drawFiducials(ctx, w, h) {
-    // marcas de referência tipo "x" nas bordas superior/inferior, como nas
-    // fotografias reais da câmara (Figuras 4-6 do artigo)
-    ctx.strokeStyle = "rgba(210,255,235,0.22)";
-    ctx.lineWidth = 1.1;
-    const rows = [12, h - 12];
-    for (const y of rows) {
-      for (let i = 0; i < 16; i++) {
-        const x = 14 + i * ((w - 28) / 15);
-        ctx.beginPath();
-        ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4);
-        ctx.moveTo(x - 4, y + 4); ctx.lineTo(x + 4, y - 4);
-        ctx.stroke();
-      }
-    }
-  }
-
-  _drawFrameVignette(ctx, w, h) {
-    const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(0,0,0,0.45)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
+    return path;
   }
 
   _drawTrack(ctx, t, globalProgress) {
@@ -207,42 +247,38 @@ export class ChamberRenderer {
     const local = Math.max(0, Math.min(1, (globalProgress - delay) / (1 - delay || 1)));
     if (local <= 0) return;
     const nShow = Math.max(2, Math.round(pts.length * local));
-    const shown = pts.slice(0, nShow);
+    const shown = nShow >= pts.length ? pts : pts.slice(0, nShow);
 
     const color = this.trackColor(t);
     const isHover = this.hoverTrackId === t.id;
     const neutral = t.charge === 0;
+    const path = this._buildPath(shown);
 
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     if (neutral) ctx.setLineDash([2, 6]); else ctx.setLineDash([]);
 
-    // glow
     if (!neutral) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur = isHover ? 16 : (t.is_spiral ? 11 : 7);
+      // halo barato (sem shadowBlur): traço largo e translúcido por baixo
+      ctx.globalAlpha = isHover ? 0.35 : (t.is_spiral ? 0.28 : 0.16);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = isHover ? 7.5 : (t.is_spiral ? 6 : 4.5);
+      ctx.stroke(path);
     }
-    ctx.strokeStyle = neutral ? "rgba(160,180,190,0.55)" : color;
+
+    // traço nítido por cima
     ctx.globalAlpha = neutral ? 0.7 : 0.95;
-    ctx.lineWidth = isHover ? 3.2 : (neutral ? 1.4 : 2.1);
+    ctx.strokeStyle = neutral ? "rgba(160,180,190,0.55)" : color;
+    ctx.lineWidth = isHover ? 2.6 : (neutral ? 1.4 : 1.8);
+    ctx.stroke(path);
 
-    ctx.beginPath();
-    let [sx, sy] = this.physToScreen(shown[0][0], shown[0][1]);
-    ctx.moveTo(sx, sy);
-    for (let i = 1; i < shown.length; i++) {
-      [sx, sy] = this.physToScreen(shown[i][0], shown[i][1]);
-      ctx.lineTo(sx, sy);
-    }
-    ctx.stroke();
-
-    // núcleo brilhante fino por cima (efeito "bolha luminosa")
-    if (!neutral) {
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 0.9;
-      ctx.lineWidth = 0.9;
-      ctx.strokeStyle = "rgba(255,255,255,0.55)";
-      ctx.stroke();
+    // núcleo branco fino (efeito "bolha luminosa"), só quando vale o custo
+    if (!neutral && (isHover || t.is_spiral)) {
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.stroke(path);
     }
     ctx.restore();
   }
@@ -264,7 +300,7 @@ export class ChamberRenderer {
     ctx.restore();
   }
 
-  _drawVertices(ctx, globalProgress) {
+  _drawVertices(ctx) {
     if (!this.event || !this.event.vertices) return;
     for (const v of this.event.vertices) {
       const [sx, sy] = this.physToScreen(v.x, v.y);

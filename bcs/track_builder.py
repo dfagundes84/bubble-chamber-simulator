@@ -22,7 +22,8 @@ from .materials import Material
 MEV_PER_CM_TO_MEV_PER_M = 100.0
 MIN_VISIBLE_RADIUS_M = 0.0015   # abaixo disso, consideramos o traço "colapsado"
 MIN_MOMENTUM_MEV = 0.5
-MAX_POINTS_PER_TRACK = 900
+MAX_POINTS_PER_TRACK = 480      # suficiente para ~2 voltas de uma espiral bem amostrada
+MAX_ITERATIONS = 20_000         # cinto de segurança (nunca deveria ser atingido; ver comentário abaixo)
 ANGLE_RESOLUTION_RAD = 0.025    # densidade de amostragem da polilinha
 
 
@@ -82,8 +83,15 @@ def integrate_track(*, start_pos: tuple[float, float], start_angle_rad: float,
                              path_length_m=path_length, stop_reason=stop_reason,
                              is_spiral=False)
 
+    # Cota de iterações: na prática o laço sempre termina bem antes disso,
+    # pois um ponto é gravado a cada ANGLE_RESOLUTION_RAD de rotação (ou, no
+    # mínimo, a cada 40 passos) -- então MAX_POINTS_PER_TRACK já limita o
+    # número de iterações a poucos milhares mesmo numa espiral bem fechada
+    # com perda de energia muito lenta (ex. gás de baixa densidade). Este
+    # `MAX_ITERATIONS` é só uma defesa extra contra combinações não previstas
+    # de parâmetros.
     n_steps = 0
-    while n_steps < 200_000:
+    while n_steps < MAX_ITERATIONS:
         n_steps += 1
         beta_gamma = p / mass_mev
         radius_m = radius_from_momentum_mev(B_tesla, p)
