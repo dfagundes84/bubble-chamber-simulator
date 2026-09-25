@@ -117,3 +117,7 @@ Essas simplificações são intencionais (mantêm o núcleo de física pequeno e
 - J. Woithe, R. Schmidt & F. Naumann, *Student worksheet: Bubble chamber pictures*, S'Cool LAB/CERN (2018) — fotografias históricas da Câmara de Bolhas de 2 m usadas como referência visual, e as quatro assinaturas de espalhamento (elétron, próton, "elétron de Compton", pósitron) reproduzidas nos modos "Traço único"/"Fóton na matéria"/"Cascata".
 - Particle Data Group, *Phys. Rev. D* **110**, 030001 (2024) — massas, vidas médias e razões de ramificação das partículas.
 - V. E. Barnes *et al.*, *Observation of a Hyperon with Strangeness Minus Three*, Phys. Rev. Lett. **12**, 204 (1964) — descoberta do Ω⁻, reproduzida na reação `k_omega_discovery`.
+
+## Licença
+
+O código deste repositório é distribuído sob a licença [MIT](LICENSE). O arquivo `20180811_JW_Student_worksheet_solutions_Bubble_ chamber_pictures.pdf` (Woithe, Schmidt & Naumann, S'Cool LAB/CERN, 2018) é licenciado pelos autores sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) e está incluído aqui com atribuição. Os artigos de Fagundes (RBEF, submetido) e Gagnon (*Phys. Educ.* 46, 443) **não** são redistribuídos neste repositório; consulte as referências acima.

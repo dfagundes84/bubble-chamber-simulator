@@ -6,3 +6,7 @@ venv/
 .ipynb_checkpoints/
 *.egg-info/
 .DS_Store
+
+# Materiais de referência com direitos de terceiros / manuscrito não publicado (mantidos só localmente)
+artigo_rbef_HIGHLIGHTS.pdf
+gagnon2011.pdf
